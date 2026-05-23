@@ -37,27 +37,126 @@ project_requirements/  # Requirements documents 00–04 (read-only source of tru
 
 ---
 
-## Commands
+## Development Environment Policy
 
-> The engine and add-in directories do not exist yet (Phase 0 of the dev plan). Commands below are the intended targets; update this section once the skeleton is created.
+**All development is done in the local project clone.** Install tools, runtimes, and dependencies locally — do not rely on global or system-wide installs where a local alternative exists. Specifically:
+- Rust toolchain via `rustup` (manages per-project toolchain via `rust-toolchain.toml`).
+- Node.js version via `.nvmrc` or `engines` field in `package.json`; use `nvm use` or `corepack` where applicable.
+- ClickHouse runs in Docker (not a shared remote) so integration tests are fully self-contained.
+- `office-addin-dev-certs` certificates are installed per-user, not system-wide.
+
+Do not add global `npm install -g` steps to scripts or CI — use `npx` or local `./node_modules/.bin/` paths instead.
+
+---
+
+## Local Development Setup
+
+### Prerequisites
+
+- **Rust** — install via [rustup](https://rustup.rs/), stable toolchain.
+- **Node.js ≥ 18 + npm** — for the Office.js add-in.
+- **Docker + Docker Compose** — for the local ClickHouse instance.
+- **MS Excel** (Windows or macOS desktop) — required to sideload and test the add-in. Excel on the web can be used as an alternative via a localhost HTTPS manifest.
+- **Office Add-ins dev certificate** — install once with `npx office-addin-dev-certs install` (needed because Office requires HTTPS even for localhost).
+
+### 1. Start ClickHouse locally
+
+```bash
+docker compose -f engine/docker/docker-compose.dev.yml up -d
+# ClickHouse will be available at localhost:8123 (HTTP) and localhost:9000 (native)
+```
+
+Seed the test dataset used by integration tests:
+
+```bash
+engine/scripts/seed_test_data.sh
+```
+
+### 2. Run the Rust engine
+
+```bash
+cp engine/config/config.example.toml engine/config/config.local.toml
+# Edit config.local.toml: set clickhouse.url, port, semantic model path
+cargo run --manifest-path engine/Cargo.toml -- --config engine/config/config.local.toml
+# Engine listens on http://127.0.0.1:3000 by default (local mode, loopback only)
+```
+
+### 3. Build and sideload the add-in
+
+```bash
+cd addin
+npm install
+npm run build:dev          # development build with source maps
+npm run start              # starts local HTTPS dev server on https://localhost:3100
+```
+
+Sideload into Excel:
+- **Windows/macOS desktop:** In Excel → Insert → Add-ins → Upload My Add-in → select `addin/manifest.xml`.
+- **Excel on the web:** Use the [sideloading guide](https://learn.microsoft.com/en-us/office/dev/add-ins/testing/sideload-office-add-ins-for-testing).
+
+In the add-in connection settings, set the engine endpoint to `http://127.0.0.1:3000`.
+
+### Commands
 
 **Engine (Rust):**
 ```
-cargo build                  # build
-cargo test                   # all tests (unit + integration)
-cargo test <test_name>       # single test
-cargo clippy -- -D warnings  # lint
+cargo build                            # build
+cargo test                             # all tests (unit + integration)
+cargo test <test_name>                 # single test
+cargo clippy -- -D warnings            # lint
+cargo test --test integration -- --ignored   # integration tests (requires local ClickHouse)
 ```
 
 **Add-in (TypeScript + Office.js):**
 ```
-npm install    # install dependencies
-npm run build  # build
-npm test       # run tests
+npm install          # install dependencies
+npm run build:dev    # development build
+npm run build        # production build
+npm test             # unit tests
+npm run lint         # ESLint
 ```
 
-**ClickHouse (integration tests):**
-Integration tests run against ClickHouse in Docker. See `engine/tests/` for setup once Phase 3 is implemented.
+---
+
+## CI/CD and GitHub Actions
+
+### Workflow structure
+
+```
+.github/workflows/
+  ci.yml          # runs on every PR: lint + unit tests + integration tests
+  release.yml     # runs on tag push (v*.*.*): builds release artifacts and publishes a GitHub Release
+```
+
+### `ci.yml` — PR checks
+
+Triggers on `push` to any branch and `pull_request` to `main`.
+
+Steps:
+1. `cargo clippy -- -D warnings` and `cargo fmt --check` on the engine.
+2. `npm run lint` and `npm test` on the add-in.
+3. Start ClickHouse via `docker compose` service container, run `cargo test --test integration`.
+
+### `release.yml` — Release pipeline
+
+Triggers on tag push matching `v*.*.*` (e.g., `v0.3.0`). Tag on `main` only.
+
+Steps:
+1. **Build engine binaries** via `cross` for three targets:
+   - `x86_64-unknown-linux-gnu` (server deployment)
+   - `x86_64-pc-windows-gnu`
+   - `x86_64-apple-darwin` + `aarch64-apple-darwin` (universal macOS via `lipo`)
+2. **Build add-in** — `npm run build` (production, minified). Output: `addin/dist/`.
+3. **Package**:
+   - Engine: `clickhouse-olap-engine-<version>-<target>.tar.gz` (binary + `config.example.toml`).
+   - Add-in: `clickhouse-olap-addin-<version>.zip` (contents of `addin/dist/` + `manifest.xml`).
+4. **Create GitHub Release** with auto-generated changelog from conventional commits; attach all archives as release assets.
+
+### Versioning
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `chore:`, etc.). Tags are created manually by the maintainer after review; CI does not auto-tag.
+
+The API version in the contract (`/v1`, `/v2`) is independent of the release version — bump it only on breaking contract changes (NFR-COMPAT-03).
 
 ---
 

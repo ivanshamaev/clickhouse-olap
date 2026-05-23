@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /home/ivan/claude/clickhouse-olap remote -v)",
+      "Bash(npm --version)",
+      "Bash(python3 -)",
+      "Bash(npm install *)",
+      "Bash(npm view *)",
+      "Bash(python3 -c \"import sys,json; v=json.load\\(sys.stdin\\); print\\(v[-1]\\)\")",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(git check-ignore *)"
+    ]
+  }
+}

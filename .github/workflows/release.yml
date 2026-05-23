@@ -1,0 +1,155 @@
+name: Release
+
+# Triggered by pushing a version tag, e.g.: git tag v0.2.0 && git push --tags
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write   # create GitHub Release + upload assets
+  pages: write      # deploy to GitHub Pages
+  id-token: write   # required by pages/deploy action
+
+jobs:
+  # ── 1. Build add-in ────────────────────────────────────────────────────────
+  build-addin:
+    name: Build add-in
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+
+    defaults:
+      run:
+        working-directory: addin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: addin/.nvmrc
+          cache: npm
+          cache-dependency-path: addin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests (gate before release)
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Patch manifest version
+        # Keeps the manifest Version field in sync with the git tag
+        run: |
+          VERSION="${{ steps.version.outputs.value }}"
+          sed -i "s|<Version>.*</Version>|<Version>${VERSION}</Version>|" dist/manifest.xml
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: addin-dist
+          path: addin/dist/
+          retention-days: 1
+
+  # ── 2. Deploy to GitHub Pages ─────────────────────────────────────────────
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build-addin
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: addin-dist
+          path: dist/
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ── 3. Create GitHub Release ──────────────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    needs: [build-addin, deploy-pages]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # needed for changelog generation
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: addin-dist
+          path: dist/
+
+      - name: Package add-in zip
+        run: |
+          VERSION="${{ needs.build-addin.outputs.version }}"
+          cd dist
+          zip -r "../clickhouse-olap-addin-v${VERSION}.zip" .
+          cd ..
+
+      - name: Generate changelog from conventional commits
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]' | sed -n '2p' || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            LOG=$(git log --oneline --no-merges | head -30)
+          else
+            LOG=$(git log "${PREV_TAG}..HEAD" --oneline --no-merges)
+          fi
+          echo "log<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$LOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          body: |
+            ## ClickHouse OLAP Add-in ${{ github.ref_name }}
+
+            ### Install
+
+            1. Download `clickhouse-olap-addin-${{ github.ref_name }}.zip` below.
+            2. Extract and host the contents on an HTTPS server, **or** use the pre-deployed version at:
+               `https://ivanshamaev.github.io/clickhouse-olap/`
+            3. In Excel → **Insert → Add-ins → Upload My Add-in** → select `manifest.xml`.
+            4. In the add-in sidebar, set the engine endpoint to your Rust engine URL.
+
+            > **Tip:** Add `?mock=1` to the taskpane URL in the manifest for a standalone demo without a live engine.
+
+            ### Changes
+
+            ```
+            ${{ steps.changelog.outputs.log }}
+            ```
+          files: |
+            clickhouse-olap-addin-v${{ needs.build-addin.outputs.version }}.zip
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}

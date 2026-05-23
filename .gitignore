@@ -1,0 +1,50 @@
+# ── Node.js (addin/) ──────────────────────────────────────────────────────────
+node_modules/
+addin/dist/
+addin/coverage/
+addin/package-lock.json   # regenerate locally; not committed in this project
+
+# ── Rust engine (engine/) ─────────────────────────────────────────────────────
+target/
+# Cargo.lock is intentionally kept for binaries (reproducible builds)
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V8
+.Trashes
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ── Editors ───────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.orig
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Office add-in dev certificates (generated per-machine) ────────────────────
+addin/certs/
+
+# ── Docker volumes / ClickHouse local data (future engine/) ──────────────────
+engine/docker/data/
+engine/docker/logs/
+
+# ── Temporary / misc ─────────────────────────────────────────────────────────
+*.tmp
+*.bak
+*.pid

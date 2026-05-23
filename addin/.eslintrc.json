@@ -1,0 +1,24 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended-requiring-type-checking"
+  ],
+  "parserOptions": {
+    "project": "./tsconfig.test.json"
+  },
+  "rules": {
+    "@typescript-eslint/explicit-function-return-type": "warn",
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "no-console": ["warn", { "allow": ["warn", "error"] }]
+  },
+  "env": {
+    "browser": true,
+    "es2017": true
+  }
+}

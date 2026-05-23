@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClickHouse OLAP</title>
+  <!-- Office.js must be loaded from CDN, not bundled -->
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" type="text/javascript"></script>
+  <style>
+    :root {
+      --blue:        #2B579A;
+      --blue-dark:   #1a3a5c;
+      --blue-light:  #E8F0FD;
+      --accent:      #0078D4;
+      --accent-hover:#106EBE;
+      --danger:      #d93025;
+      --ok:          #107c10;
+      --warn:        #f7a800;
+      --bg:          #f5f5f5;
+      --surface:     #ffffff;
+      --border:      #d0d0d0;
+      --text:        #1f1f1f;
+      --text-muted:  #666;
+      --radius:      4px;
+      --font: "Segoe UI", system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    #header {
+      background: var(--blue);
+      color: #fff;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    #header h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.3px; }
+    #settings-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      border-radius: var(--radius);
+      opacity: 0.8;
+    }
+    #settings-btn:hover { opacity: 1; background: rgba(255,255,255,0.15); }
+
+    /* ── Settings panel ─────────────────────────────────────────── */
+    #settings-panel {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      flex-shrink: 0;
+    }
+    #settings-panel.hidden { display: none; }
+    .settings-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+    .settings-row label { font-size: 11px; color: var(--text-muted); min-width: 68px; }
+    #engine-url {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px 7px;
+      font-size: 12px;
+      font-family: monospace;
+    }
+    #engine-url:focus { outline: none; border-color: var(--accent); }
+    #test-btn {
+      padding: 4px 10px;
+      font-size: 12px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #test-btn:hover { background: var(--accent-hover); }
+    #conn-status { font-size: 11px; color: var(--text-muted); min-height: 16px; }
+    #conn-status.ok   { color: var(--ok); }
+    #conn-status.fail { color: var(--danger); }
+
+    /* ── Scrollable body ────────────────────────────────────────── */
+    #main { flex: 1; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+
+    /* ── Model selector ─────────────────────────────────────────── */
+    .model-row { display: flex; gap: 6px; align-items: center; }
+    .model-row label { font-size: 11px; color: var(--text-muted); }
+    #model-select {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px 7px;
+      font-size: 12px;
+      background: var(--surface);
+    }
+    #model-select:focus { outline: none; border-color: var(--accent); }
+    #load-model-btn {
+      padding: 4px 8px;
+      font-size: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    #load-model-btn:hover { background: var(--blue-light); }
+
+    /* ── Zone sections ──────────────────────────────────────────── */
+    .zone {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .zone-header {
+      background: var(--blue);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .zone-header .zone-icon { font-size: 12px; margin-right: 4px; }
+    .zone-body { padding: 6px 8px; min-height: 32px; }
+
+    /* Tags (selected fields) */
+    .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--blue-light);
+      border: 1px solid #b0c8f0;
+      border-radius: 12px;
+      padding: 2px 8px 2px 10px;
+      font-size: 11px;
+      color: var(--blue-dark);
+    }
+    .tag .remove-tag {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 0;
+      line-height: 1;
+    }
+    .tag .remove-tag:hover { color: var(--danger); }
+    .tag select {
+      border: none;
+      background: transparent;
+      font-size: 11px;
+      color: var(--blue-dark);
+      cursor: pointer;
+      padding: 0 2px;
+      font-family: inherit;
+    }
+
+    /* Add-field dropdown */
+    .add-field-row { display: flex; gap: 4px; }
+    .field-picker {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 3px 6px;
+      font-size: 11px;
+      background: var(--surface);
+    }
+    .field-picker:focus { outline: none; border-color: var(--accent); }
+    .add-btn {
+      padding: 3px 10px;
+      font-size: 11px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    .add-btn:hover { background: var(--accent-hover); }
+    .add-btn:disabled { background: var(--border); cursor: default; }
+
+    /* Totals toggle row */
+    .totals-row { display: flex; gap: 12px; padding: 4px 8px; font-size: 11px; align-items: center; }
+    .totals-row label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+
+    /* ── Footer ─────────────────────────────────────────────────── */
+    #footer {
+      flex-shrink: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .action-row { display: flex; gap: 6px; }
+    #refresh-btn {
+      flex: 1;
+      padding: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    #refresh-btn:hover:not(:disabled) { background: var(--accent-hover); }
+    #refresh-btn:disabled { background: var(--border); cursor: default; }
+    #cancel-btn {
+      padding: 7px 14px;
+      font-size: 13px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    #cancel-btn:hover:not(:disabled) { background: #f0f0f0; }
+    #cancel-btn:disabled { opacity: 0.4; cursor: default; }
+
+    #status-bar {
+      font-size: 11px;
+      color: var(--text-muted);
+      min-height: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #status-bar.error { color: var(--danger); }
+    #status-bar.warn  { color: var(--warn); }
+    #status-bar.ok    { color: var(--ok); }
+
+    .spinner {
+      display: inline-block;
+      width: 10px; height: 10px;
+      border: 2px solid var(--blue-light);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .stale-badge {
+      background: var(--warn);
+      color: #fff;
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 8px;
+    }
+
+    #mock-badge {
+      background: #7b5ea7;
+      color: #fff;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 8px;
+      margin-left: auto;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div id="header">
+    <h1>ClickHouse OLAP</h1>
+    <button id="settings-btn" title="Connection settings">⚙</button>
+  </div>
+
+  <!-- Settings panel (collapsible) -->
+  <div id="settings-panel" class="hidden">
+    <div class="settings-row">
+      <label>Engine URL</label>
+      <input id="engine-url" type="url" placeholder="http://127.0.0.1:3000" spellcheck="false" />
+      <button id="test-btn">Test</button>
+    </div>
+    <div id="conn-status"></div>
+  </div>
+
+  <!-- Main scrollable area -->
+  <div id="main">
+    <!-- Model selector -->
+    <div class="model-row">
+      <label>Model</label>
+      <select id="model-select"><option value="">— select model —</option></select>
+      <button id="load-model-btn" title="Reload model">↺</button>
+    </div>
+
+    <!-- ROWS zone -->
+    <div class="zone" id="zone-rows">
+      <div class="zone-header"><span><span class="zone-icon">⊞</span>ROWS</span></div>
+      <div class="zone-body">
+        <div class="tags" id="rows-tags"></div>
+        <div class="add-field-row">
+          <select class="field-picker" id="rows-picker"><option value="">+ Add dimension</option></select>
+          <button class="add-btn" id="rows-add">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUMNS zone -->
+    <div class="zone" id="zone-cols">
+      <div class="zone-header"><span><span class="zone-icon">⊟</span>COLUMNS</span></div>
+      <div class="zone-body">
+        <div class="tags" id="cols-tags"></div>
+        <div class="add-field-row">
+          <select class="field-picker" id="cols-picker"><option value="">+ Add dimension</option></select>
+          <button class="add-btn" id="cols-add">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VALUES zone -->
+    <div class="zone" id="zone-values">
+      <div class="zone-header"><span><span class="zone-icon">Σ</span>VALUES</span></div>
+      <div class="zone-body">
+        <div class="tags" id="values-tags"></div>
+        <div class="add-field-row">
+          <select class="field-picker" id="values-picker"><option value="">+ Add measure</option></select>
+          <button class="add-btn" id="values-add">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Totals -->
+    <div class="totals-row">
+      <label><input type="checkbox" id="chk-row-subtotals" checked /> Row subtotals</label>
+      <label><input type="checkbox" id="chk-grand-total" checked /> Grand total</label>
+    </div>
+  </div>
+
+  <!-- Footer: actions + status -->
+  <div id="footer">
+    <div class="action-row">
+      <button id="refresh-btn" disabled>⟳ Refresh</button>
+      <button id="cancel-btn" disabled>✕</button>
+    </div>
+    <div id="status-bar"></div>
+  </div>
+</body>
+</html>
