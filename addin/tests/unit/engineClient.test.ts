@@ -1,4 +1,4 @@
-import { EngineClient, EngineClientError, MockEngineClient } from "../../src/api/engineClient";
+import { EngineClient, MockEngineClient } from "../../src/api/engineClient";
 import { PivotRequest } from "../../src/api/types";
 
 // ── MockEngineClient ──────────────────────────────────────────────────────────
@@ -111,10 +111,10 @@ describe("EngineClient", () => {
     const req = makeRequest();
     const result = await c.query(req);
     expect(result.status).toBe("ok");
-    const call = mockFetch.mock.calls[0];
-    expect(call[0]).toBe("http://localhost:3000/v1/query");
-    expect(call[1].method).toBe("POST");
-    expect(JSON.parse(call[1].body as string)).toMatchObject({ request_id: req.request_id });
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://localhost:3000/v1/query");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toMatchObject({ request_id: req.request_id });
   });
 
   it("throws EngineClientError with code from error response", async () => {

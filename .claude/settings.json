@@ -9,7 +9,8 @@
       "Bash(python3 -c \"import sys,json; v=json.load\\(sys.stdin\\); print\\(v[-1]\\)\")",
       "Bash(npm run *)",
       "Bash(npm test *)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(echo \"Exit code: $?\")"
     ]
   }
 }

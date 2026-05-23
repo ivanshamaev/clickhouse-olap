@@ -70,8 +70,8 @@ export class ResultRenderer {
         const rowIndex = 2 + ri;
 
         // Dimension cells
-        const displayKey = member.is_grand_total
-          ? ["Grand Total", ...Array(rowDimCount - 1).fill("")]
+        const displayKey: (string | number | null)[] = member.is_grand_total
+          ? ["Grand Total", ...new Array<string>(rowDimCount - 1).fill("")]
           : member.key;
         displayKey.forEach((val, fi) => {
           if (fi >= rowDimCount) return;

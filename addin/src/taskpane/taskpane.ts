@@ -51,7 +51,7 @@ const statusBar     = $<HTMLDivElement>("status-bar");
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 
-Office.onReady(() => {
+void Office.onReady(() => {
   const saved = loadSettings();
   engineUrlInput.value = saved.engineUrl;
 
