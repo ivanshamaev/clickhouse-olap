@@ -11,7 +11,10 @@
       "Bash(npm test *)",
       "Bash(git check-ignore *)",
       "Bash(echo \"Exit code: $?\")",
-      "Bash(git -C /home/ivan/claude/clickhouse-olap check-ignore -v addin/package-lock.json)"
+      "Bash(git -C /home/ivan/claude/clickhouse-olap check-ignore -v addin/package-lock.json)",
+      "Bash(git -C /home/ivan/claude/clickhouse-olap status --short addin/package-lock.json)",
+      "Bash(git -C /home/ivan/claude/clickhouse-olap ls-files addin/package-lock.json)",
+      "Bash(git -C /home/ivan/claude/clickhouse-olap ls-files --others --exclude-standard addin/package-lock.json)"
     ]
   }
 }
