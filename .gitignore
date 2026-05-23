@@ -2,7 +2,6 @@
 node_modules/
 addin/dist/
 addin/coverage/
-addin/package-lock.json   # regenerate locally; not committed in this project
 
 # ── Rust engine (engine/) ─────────────────────────────────────────────────────
 target/
