@@ -1,0 +1,29 @@
+# ── Server ────────────────────────────────────────────────────────────────────
+[server]
+# Local mode: bind only to loopback.
+# Server mode: change to "0.0.0.0:3000" and add TLS termination upstream.
+bind = "127.0.0.1:3000"
+
+# ── ClickHouse ────────────────────────────────────────────────────────────────
+[clickhouse]
+url      = "http://localhost:8123"
+database = "default"
+# username = "default"
+# password = ""
+query_timeout_secs       = 30
+max_preaggregate_rows    = 500000
+
+# ── Semantic models ───────────────────────────────────────────────────────────
+[models]
+# Directory containing *.toml model files.
+path = "config/models"
+
+# ── Result cache ──────────────────────────────────────────────────────────────
+[cache]
+capacity = 1000   # max cached responses
+ttl_secs = 300    # 5 minutes
+
+# ── Global limits (can be overridden per-request) ─────────────────────────────
+[limits]
+max_cells  = 500000
+max_groups = 200000
