@@ -4,12 +4,16 @@ on:
   push:
     tags: ["v*.*.*"]
 
+permissions:
+  contents: write   # gh release create
+  pages: write      # deploy to GitHub Pages
+  id-token: write   # required by actions/deploy-pages
+
 jobs:
-  release:
-    name: Build and publish release
+  # ── 1. Build ──────────────────────────────────────────────────────────────────
+  build:
+    name: Build add-in
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     defaults:
       run:
@@ -17,8 +21,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -33,12 +35,58 @@ jobs:
         name: Test
 
       - run: npm run build
-        name: Build
+        name: Build (production)
 
       - name: Patch manifest version
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           sed -i "s|<Version>.*</Version>|<Version>${VERSION}</Version>|" dist/manifest.xml
+
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: addin-dist
+          path: addin/dist/
+          retention-days: 1
+
+  # ── 2. Publish to GitHub Pages ────────────────────────────────────────────────
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: addin-dist
+          path: dist/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+  # ── 3. Create GitHub Release ──────────────────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: addin-dist
+          path: dist/
 
       - name: Create zip archive
         run: |
@@ -48,9 +96,13 @@ jobs:
       - name: Create GitHub Release
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          # Delete existing release for this tag if it exists (keep the tag itself)
+          gh release delete "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --yes 2>/dev/null || true
           gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
             --title "Release ${GITHUB_REF_NAME}" \
             --generate-notes \
+            "dist/manifest.xml#manifest.xml (установить в Excel)" \
             "clickhouse-olap-addin-v${VERSION}.zip"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
