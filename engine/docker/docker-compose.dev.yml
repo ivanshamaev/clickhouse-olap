@@ -24,6 +24,13 @@ services:
       timeout: 3s
       retries: 10
 
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.200.0/24
+
 volumes:
   clickhouse-data:
   clickhouse-logs:
