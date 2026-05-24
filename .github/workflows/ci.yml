@@ -7,8 +7,38 @@ on:
     branches: [main]
 
 jobs:
+  # ── Rust engine ───────────────────────────────────────────────────────────────
+  engine:
+    name: Engine — fmt, clippy, test
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: engine
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+
+      - run: cargo fmt --check
+        name: Format check
+
+      - run: cargo clippy -- -D warnings
+        name: Clippy
+
+      - run: cargo test
+        name: Test
+
+  # ── Office.js add-in ─────────────────────────────────────────────────────────
   addin:
-    name: Lint, test, build
+    name: Add-in — lint, test, build
     runs-on: ubuntu-latest
 
     defaults:
@@ -42,6 +72,7 @@ jobs:
         with:
           path: addin/dist/
 
+  # ── Deploy GitHub Pages (main only) ──────────────────────────────────────────
   deploy-pages:
     name: Deploy to GitHub Pages
     needs: addin

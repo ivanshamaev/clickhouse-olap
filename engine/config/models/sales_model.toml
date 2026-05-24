@@ -1,0 +1,69 @@
+id    = "sales_model"
+label = "Sales Analysis"
+
+[source]
+table = "sales"
+
+# ── Dimensions ────────────────────────────────────────────────────────────────
+
+[[dimensions]]
+field = "region"
+label = "Region"
+type  = "categorical"
+
+[[dimensions]]
+field = "country"
+label = "Country"
+type  = "categorical"
+
+[[dimensions]]
+field = "product_category"
+label = "Product Category"
+type  = "categorical"
+
+[[dimensions]]
+field = "order_date"
+label = "Order Date"
+type  = "date"
+hierarchy = ["year", "quarter", "month", "day"]
+
+# ── Measures ──────────────────────────────────────────────────────────────────
+
+[[measures]]
+id          = "revenue"
+field       = "amount"
+label       = "Revenue"
+allowed_agg = ["sum", "avg", "min", "max"]
+additive    = true
+format      = "currency"
+
+[[measures]]
+id          = "orders"
+field       = "order_id"
+label       = "Orders"
+allowed_agg = ["count_distinct"]
+additive    = false
+format      = "integer"
+
+[[measures]]
+id          = "quantity"
+field       = "qty"
+label       = "Quantity"
+allowed_agg = ["sum", "avg", "min", "max"]
+additive    = true
+format      = "integer"
+
+# ── Filterable fields ─────────────────────────────────────────────────────────
+
+filterable_fields = [
+    "region",
+    "country",
+    "product_category",
+    "order_date",
+]
+
+# ── Guards (cardinality control) ──────────────────────────────────────────────
+
+[guards]
+max_groups              = 200000
+high_cardinality_fields = ["order_id", "customer_id"]
