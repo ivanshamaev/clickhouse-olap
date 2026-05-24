@@ -66,6 +66,11 @@ jobs:
       - run: npm run build
         name: Build
 
+      - name: Merge site/ into dist
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        working-directory: ${{ github.workspace }}
+        run: cp -r site/. addin/dist/
+
       - name: Upload dist artifact
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3

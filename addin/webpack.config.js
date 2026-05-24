@@ -57,9 +57,6 @@ module.exports = (env, argv) => {
         patterns: [
           { from: "assets", to: "assets" },
           { from: "manifest.xml", to: "manifest.xml" },
-          { from: "src/index.html", to: "index.html" },
-          { from: "src/site.css", to: "site.css" },
-          { from: "src/docs", to: "docs" },
         ],
       }),
     ],
