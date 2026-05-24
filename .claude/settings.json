@@ -41,7 +41,9 @@
       "Bash(curl -s http://localhost:3000/v1/models/nonexistent)",
       "Bash(sed -i 's/© 2025 Ivan Shamaev\\\\. Released under the <a href=\"https:\\\\/\\\\/github\\\\.com\\\\/ivanshamaev\\\\/clickhouse-olap\\\\/blob\\\\/main\\\\/LICENSE\" target=\"_blank\" rel=\"noopener\">MIT License<\\\\/a>\\\\./© 2026 <a href=\"https:\\\\/\\\\/ivan-shamaev.ru\\\\/cv\" target=\"_blank\" rel=\"noopener\">Ivan Shamaev<\\\\/a>. Released under the <a href=\"https:\\\\/\\\\/github.com\\\\/ivanshamaev\\\\/clickhouse-olap\\\\/blob\\\\/main\\\\/LICENSE\" target=\"_blank\" rel=\"noopener\">MIT License<\\\\/a>./' /home/ivan/claude/clickhouse-olap/site/index.html)",
       "Bash(sed -i 's/© 2025 Ivan Shamaev\\\\. MIT License\\\\./© 2026 <a href=\"https:\\\\/\\\\/ivan-shamaev.ru\\\\/cv\" target=\"_blank\" rel=\"noopener\">Ivan Shamaev<\\\\/a>. MIT License./' /home/ivan/claude/clickhouse-olap/site/docs/clickhouse.html /home/ivan/claude/clickhouse-olap/site/docs/engine.html /home/ivan/claude/clickhouse-olap/site/docs/addin.html)",
-      "Bash(git commit -m 'fix: update footer copyright to 2026, link Ivan Shamaev to CV *)"
+      "Bash(git commit -m 'fix: update footer copyright to 2026, link Ivan Shamaev to CV *)",
+      "Bash(git commit -m 'docs: add CONTRIBUTING.md *)",
+      "Bash(git commit -m 'docs: update README — project in development, contact info@datatalks.ru *)"
     ]
   }
 }
