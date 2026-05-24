@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    defaults:
+      run:
+        working-directory: addin
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: addin/.nvmrc
+          cache: npm
+          cache-dependency-path: addin/package-lock.json
+
+      - run: npm ci
+        name: Install dependencies
+
+      - run: npm test
+        name: Test
+
+      - run: npm run build
+        name: Build
+
+      - name: Patch manifest version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s|<Version>.*</Version>|<Version>${VERSION}</Version>|" dist/manifest.xml
+
+      - name: Create zip archive
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          (cd dist && zip -r "../clickhouse-olap-addin-v${VERSION}.zip" .)
+
+      - name: Create GitHub Release
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "Release ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            "clickhouse-olap-addin-v${VERSION}.zip"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
