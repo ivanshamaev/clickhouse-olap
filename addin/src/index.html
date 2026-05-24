@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClickHouse OLAP — Excel Add-in</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #f0f4f8;
+      color: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.10);
+      max-width: 560px;
+      width: 100%;
+      padding: 2.5rem 2rem;
+      text-align: center;
+    }
+
+    .logo {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 1.25rem;
+      background: #2B579A;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .logo svg { width: 40px; height: 40px; fill: #fff; }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: .4rem;
+      color: #2B579A;
+    }
+
+    .tagline {
+      color: #555;
+      font-size: .95rem;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+
+    .steps {
+      text-align: left;
+      background: #f5f8ff;
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.75rem;
+      counter-reset: step;
+    }
+    .steps li {
+      list-style: none;
+      counter-increment: step;
+      position: relative;
+      padding-left: 2.2rem;
+      margin-bottom: .85rem;
+      font-size: .93rem;
+      line-height: 1.5;
+    }
+    .steps li:last-child { margin-bottom: 0; }
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      background: #2B579A;
+      color: #fff;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+    }
+    .steps code {
+      background: #e4ecfa;
+      border-radius: 4px;
+      padding: .1em .35em;
+      font-size: .88em;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: #2B579A;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 8px;
+      padding: .7rem 1.5rem;
+      font-size: .95rem;
+      font-weight: 600;
+      transition: background .15s;
+      margin-bottom: .75rem;
+    }
+    .btn:hover { background: #1a3a5c; }
+    .btn-outline {
+      background: #fff;
+      color: #2B579A;
+      border: 2px solid #2B579A;
+    }
+    .btn-outline:hover { background: #f0f4f8; }
+
+    .buttons { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: center; }
+
+    .footer {
+      margin-top: 2rem;
+      font-size: .8rem;
+      color: #999;
+    }
+    .footer a { color: #2B579A; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <!-- simple table/pivot icon -->
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 3h18v18H3V3zm2 2v4h6V5H5zm8 0v4h6V5h-6zM5 11v4h6v-4H5zm8 0v4h6v-4h-6zM5 17v2h6v-2H5zm8 0v2h6v-2h-6z"/>
+      </svg>
+    </div>
+
+    <h1>ClickHouse OLAP</h1>
+    <p class="tagline">
+      Pivot analysis of ClickHouse data directly in&nbsp;Microsoft&nbsp;Excel.<br>
+      No raw data leaves ClickHouse — only aggregated results.
+    </p>
+
+    <ol class="steps">
+      <li>Download <strong>manifest.xml</strong> from the latest release below</li>
+      <li>In Excel: <code>Insert</code> → <code>Add-ins</code> → <code>My Add-ins</code> → <code>Upload Add-in</code></li>
+      <li>Select the downloaded <strong>manifest.xml</strong></li>
+      <li>Click the <strong>ClickHouse OLAP</strong> button on the <em>Home</em> tab</li>
+    </ol>
+
+    <div class="buttons">
+      <a class="btn" href="https://github.com/ivanshamaev/clickhouse-olap/releases/latest/download/manifest.xml">
+        ⬇ Download manifest.xml
+      </a>
+      <a class="btn btn-outline" href="https://github.com/ivanshamaev/clickhouse-olap/releases">
+        All releases
+      </a>
+    </div>
+
+    <p class="footer">
+      <a href="https://github.com/ivanshamaev/clickhouse-olap">GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="taskpane.html?mock=1">Preview (mock data)</a>
+    </p>
+  </div>
+</body>
+</html>
