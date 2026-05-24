@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Engine Deployment — ClickHouse OLAP Docs</title>
+  <link rel="stylesheet" href="../site.css" />
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────────────────────────────────────── -->
+<nav class="site-nav">
+  <a class="nav-brand" href="../index.html">
+    <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v4h6V5H5zm8 0v4h6V5h-6zM5 11v4h6v-4H5zm8 0v4h6v-4h-6zM5 17v2h6v-2H5zm8 0v2h6v-2h-6z"/></svg>
+    ClickHouse OLAP
+  </a>
+  <ul class="nav-links">
+    <li><a href="../index.html">Home</a></li>
+    <li><a href="clickhouse.html">ClickHouse</a></li>
+    <li><a href="engine.html" class="active">Engine</a></li>
+    <li><a href="addin.html">Excel Add-in</a></li>
+  </ul>
+  <div class="nav-right">
+    <a class="nav-github" href="https://github.com/ivanshamaev/clickhouse-olap" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.087.636-1.338-2.22-.252-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.268 2.75 1.026A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.026 2.747-1.026.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- ── Page hero ─────────────────────────────────────────────────────────────── -->
+<div style="background:var(--blue);color:#fff;padding:3rem 0 2.5rem">
+  <div class="container">
+    <div class="section-label" style="color:rgba(255,255,255,.7)">Guide</div>
+    <h1 style="color:#fff;margin-bottom:.5rem">Engine Deployment</h1>
+    <p style="color:rgba(255,255,255,.8);font-size:1.05rem;max-width:560px;margin:0">
+      Build the stateless Rust engine, configure semantic models, set up systemd + nginx + Let's Encrypt,
+      and verify the deployment end-to-end.
+    </p>
+  </div>
+</div>
+
+<!-- ── Content ───────────────────────────────────────────────────────────────── -->
+<div class="container">
+  <div class="docs-layout">
+
+    <!-- Sidebar TOC -->
+    <aside class="docs-sidebar">
+      <div class="docs-toc">
+        <h4>On this page</h4>
+        <ul>
+          <li><a href="#rust">Install Rust</a></li>
+          <li><a href="#build">Build the engine</a></li>
+          <li><a href="#config">Configuration</a></li>
+          <li><a href="#models">Semantic models</a></li>
+          <li><a href="#systemd">systemd service</a></li>
+          <li><a href="#nginx">nginx + HTTPS</a></li>
+          <li><a href="#firewall">Firewall</a></li>
+          <li><a href="#verify">Verify</a></li>
+          <li><a href="#update">Update engine</a></li>
+          <li><a href="#logs">Logs &amp; monitoring</a></li>
+          <li><a href="#security">Security checklist</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <article class="docs-content">
+
+      <div class="note">
+        <strong>Prerequisite</strong>
+        Complete the <a href="clickhouse.html">ClickHouse Setup</a> guide first.
+        The engine needs <code>olap_user</code> credentials and at least one table to query.
+      </div>
+
+      <h2 id="rust">Install Rust</h2>
+
+      <p>The engine requires the stable Rust toolchain. Install via <code>rustup</code>:</p>
+
+<pre><code># As the user that will run the engine (e.g. "engine")
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source ~/.cargo/env
+
+# Verify
+rustc --version   # should be stable 1.80+
+cargo --version</code></pre>
+
+      <p>Optionally create a dedicated system user first:</p>
+
+<pre><code>useradd -m -s /bin/bash engine</code></pre>
+
+      <h2 id="build">Build the engine</h2>
+
+      <h3>Option A — build from source (recommended)</h3>
+
+<pre><code># Clone the repository
+git clone https://github.com/ivanshamaev/clickhouse-olap.git
+cd clickhouse-olap/engine
+
+# Build the optimised release binary (~3–5 minutes on first build)
+cargo build --release
+
+# Binary is at:
+ls -lh target/release/engine</code></pre>
+
+      <h3>Option B — download a release binary</h3>
+
+<pre><code>VERSION="0.1.0"
+curl -L "https://github.com/ivanshamaev/clickhouse-olap/releases/download/v${VERSION}/clickhouse-olap-engine-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+  | tar -xz
+
+sudo mv engine /usr/local/bin/clickhouse-olap-engine
+sudo chmod +x /usr/local/bin/clickhouse-olap-engine</code></pre>
+
+      <h2 id="config">Configuration</h2>
+
+      <p>Create the config directory and copy the example config:</p>
+
+<pre><code>sudo mkdir -p /etc/clickhouse-olap/models
+sudo chown -R engine:engine /etc/clickhouse-olap</code></pre>
+
+      <p>Create <strong><code>/etc/clickhouse-olap/config.toml</code></strong>:</p>
+
+<pre><code>[server]
+# Engine listens locally; nginx proxies external HTTPS traffic
+bind = "127.0.0.1:3000"
+
+[clickhouse]
+url      = "http://127.0.0.1:8123"
+database = "olap"
+username = "olap_user"
+password = "REPLACE_WITH_STRONG_PASSWORD"
+query_timeout_secs    = 30
+max_preaggregate_rows = 500000
+
+[models]
+path = "/etc/clickhouse-olap/models"
+
+[cache]
+capacity = 1000
+ttl_secs = 300
+
+[limits]
+max_cells  = 500000
+max_groups = 200000</code></pre>
+
+      <div class="warning">
+        <strong>Security</strong>
+        Set file permissions: <code>chmod 640 /etc/clickhouse-olap/config.toml</code>.
+        The password is stored in plain text — restrict read access to the <code>engine</code> user only.
+      </div>
+
+      <h2 id="models">Semantic models</h2>
+
+      <p>
+        Each <code>.toml</code> file in the <code>models/</code> directory defines one semantic model
+        (one pivot-able dataset). Copy the example model from the repository:
+      </p>
+
+<pre><code>cp /home/engine/clickhouse-olap/engine/config/models/sales_model.toml \
+   /etc/clickhouse-olap/models/</code></pre>
+
+      <p>Or create a model manually. Example <strong><code>sales_model.toml</code></strong>:</p>
+
+<pre><code>[model]
+id    = "sales_model"
+label = "Sales"
+table = "olap.sales"
+
+[[dimensions]]
+field = "region"
+label = "Region"
+type  = "string"
+
+[[dimensions]]
+field = "country"
+label = "Country"
+type  = "string"
+
+[[dimensions]]
+field = "product_category"
+label = "Product Category"
+type  = "string"
+
+[[dimensions]]
+field      = "order_date"
+label      = "Order Date"
+type       = "date"
+hierarchy  = ["year", "quarter", "month"]
+
+[[measures]]
+id          = "revenue"
+field       = "amount"
+label       = "Revenue"
+allowed_agg = ["sum", "avg", "min", "max"]
+format      = "currency"
+
+[[measures]]
+id          = "orders"
+field       = "order_id"
+label       = "Orders"
+allowed_agg = ["count_distinct"]
+
+[[measures]]
+id          = "quantity"
+field       = "qty"
+label       = "Quantity"
+allowed_agg = ["sum", "avg"]
+
+[guards]
+max_groups             = 200000
+high_cardinality_fields = ["order_id", "customer_id"]</code></pre>
+
+      <div class="note">
+        <strong>High-cardinality guard</strong>
+        Fields listed in <code>high_cardinality_fields</code> are blocked from GROUP BY
+        unless the request includes a <code>top_n</code> limit or an equality/in filter on that field.
+        This prevents accidental multi-million-group queries from reaching ClickHouse.
+      </div>
+
+      <h2 id="systemd">systemd service</h2>
+
+<pre><code>sudo tee /etc/systemd/system/clickhouse-olap-engine.service &gt; /dev/null &lt;&lt; 'EOF'
+[Unit]
+Description=ClickHouse OLAP Engine
+After=network.target clickhouse-server.service
+Requires=clickhouse-server.service
+
+[Service]
+Type=simple
+User=engine
+Group=engine
+WorkingDirectory=/home/engine
+ExecStart=/home/engine/clickhouse-olap/engine/target/release/engine \
+    --config /etc/clickhouse-olap/config.toml
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=clickhouse-olap-engine
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/tmp
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now clickhouse-olap-engine
+sudo systemctl status clickhouse-olap-engine</code></pre>
+
+      <p>Check the logs:</p>
+
+<pre><code>journalctl -u clickhouse-olap-engine -f</code></pre>
+
+      <h2 id="nginx">nginx + HTTPS</h2>
+
+      <p>
+        Office.js <strong>requires HTTPS</strong> even for local connections. You need a real domain
+        pointed at your server's IP.
+      </p>
+
+<pre><code># Install nginx and certbot
+sudo apt install -y nginx certbot python3-certbot-nginx
+
+# Obtain an SSL certificate (domain must already resolve to this IP)
+sudo certbot --nginx -d engine.yourdomain.com
+
+# Create nginx site config
+sudo tee /etc/nginx/sites-available/clickhouse-olap &lt;&lt; 'EOF'
+server {
+    listen 80;
+    server_name engine.yourdomain.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name engine.yourdomain.com;
+
+    ssl_certificate     /etc/letsencrypt/live/engine.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/engine.yourdomain.com/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    # CORS — restrict to your add-in origin
+    add_header Access-Control-Allow-Origin  "https://ivanshamaev.github.io" always;
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS"             always;
+    add_header Access-Control-Allow-Headers "Content-Type"                   always;
+
+    if ($request_method = OPTIONS) {
+        return 204;
+    }
+
+    location /v1/ {
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+    }
+}
+EOF
+
+sudo ln -sf /etc/nginx/sites-available/clickhouse-olap \
+            /etc/nginx/sites-enabled/clickhouse-olap
+sudo nginx -t &amp;&amp; sudo systemctl reload nginx</code></pre>
+
+      <div class="tip">
+        <strong>Let's Encrypt auto-renewal</strong>
+        Certbot installs a systemd timer (<code>certbot.timer</code>) that automatically renews
+        certificates before they expire. Verify it's active: <code>systemctl status certbot.timer</code>
+      </div>
+
+      <h2 id="firewall">Firewall</h2>
+
+<pre><code>sudo ufw allow 22/tcp    # SSH
+sudo ufw allow 80/tcp    # HTTP → redirect to HTTPS
+sudo ufw allow 443/tcp   # HTTPS (nginx → engine)
+sudo ufw enable
+sudo ufw status
+
+# Do NOT expose these ports:
+# 8123 — ClickHouse HTTP (127.0.0.1 only)
+# 3000 — engine HTTP    (127.0.0.1 only)</code></pre>
+
+      <h2 id="verify">Verify</h2>
+
+      <h3>From the server (loopback)</h3>
+
+<pre><code># Health check
+curl http://127.0.0.1:3000/v1/health
+# → {"status":"ok"}
+
+# List loaded models
+curl http://127.0.0.1:3000/v1/models
+# → [{"model_id":"sales_model","label":"Sales"}]
+
+# Run a test query
+curl -s -X POST http://127.0.0.1:3000/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_version":"1",
+    "request_id":"test-001",
+    "model_id":"sales_model",
+    "rows":[{"field":"region"}],
+    "columns":[],
+    "measures":[{"id":"revenue","agg":"sum"}],
+    "filters":[],
+    "totals":{"row_subtotals":false,"column_subtotals":false,"grand_total":true},
+    "limits":{}
+  }' | python3 -m json.tool</code></pre>
+
+      <h3>From outside (via nginx + HTTPS)</h3>
+
+<pre><code>curl https://engine.yourdomain.com/v1/health
+# → {"status":"ok"}</code></pre>
+
+      <h2 id="update">Update engine</h2>
+
+<pre><code>su - engine
+cd clickhouse-olap
+git pull origin main
+cd engine
+cargo build --release
+
+sudo systemctl restart clickhouse-olap-engine
+sudo systemctl status clickhouse-olap-engine</code></pre>
+
+      <h2 id="logs">Logs &amp; monitoring</h2>
+
+<pre><code># Engine logs (live)
+journalctl -u clickhouse-olap-engine -f
+
+# nginx access log
+tail -f /var/log/nginx/access.log
+
+# nginx error log
+tail -f /var/log/nginx/error.log
+
+# ClickHouse log
+tail -f /var/log/clickhouse-server/clickhouse-server.log
+
+# Resource usage
+systemctl status clickhouse-olap-engine clickhouse-server</code></pre>
+
+      <h2 id="security">Security checklist</h2>
+
+      <ul class="checklist">
+        <li>ClickHouse listens only on <code>127.0.0.1:8123</code></li>
+        <li>Engine listens only on <code>127.0.0.1:3000</code></li>
+        <li>UFW enabled: only ports 22, 80, 443 open</li>
+        <li>SSL certificate (Let's Encrypt) installed and auto-renewing</li>
+        <li>Dedicated ClickHouse user with <code>GRANT ON olap.*</code> only</li>
+        <li><code>engine</code> user has no sudo privileges in production</li>
+        <li><code>NoNewPrivileges=yes</code> and <code>ProtectSystem=strict</code> in systemd unit</li>
+        <li>CORS in nginx restricted to specific add-in origin (not <code>*</code>)</li>
+        <li><code>config.toml</code> readable only by the <code>engine</code> user (<code>chmod 640</code>)</li>
+      </ul>
+
+      <div class="tip">
+        <strong>Next step</strong>
+        With the engine running behind HTTPS, install the Excel add-in and connect it to your engine URL.
+        <a href="addin.html">Excel Add-in Guide →</a>
+      </div>
+
+    </article>
+  </div>
+</div>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">ClickHouse OLAP</div>
+        <p class="footer-desc">Open-source Excel add-in and Rust engine for sub-second OLAP pivot tables backed by ClickHouse. MIT License.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Docs</h4>
+        <ul>
+          <li><a href="clickhouse.html">ClickHouse Setup</a></li>
+          <li><a href="engine.html">Engine Deployment</a></li>
+          <li><a href="addin.html">Excel Add-in</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Links</h4>
+        <ul>
+          <li><a href="https://github.com/ivanshamaev/clickhouse-olap" target="_blank" rel="noopener">GitHub Repository</a></li>
+          <li><a href="https://ivan-shamaev.ru/cv" target="_blank" rel="noopener">Author CV</a></li>
+          <li><a href="https://clickhouse.com/docs" target="_blank" rel="noopener">ClickHouse Docs</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 Ivan Shamaev. MIT License.</span>
+      <span>Made with 🦀 Rust + Office.js</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

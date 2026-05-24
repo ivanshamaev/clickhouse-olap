@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClickHouse Setup — ClickHouse OLAP Docs</title>
+  <link rel="stylesheet" href="../site.css" />
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────────────────────────────────────── -->
+<nav class="site-nav">
+  <a class="nav-brand" href="../index.html">
+    <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v4h6V5H5zm8 0v4h6V5h-6zM5 11v4h6v-4H5zm8 0v4h6v-4h-6zM5 17v2h6v-2H5zm8 0v2h6v-2h-6z"/></svg>
+    ClickHouse OLAP
+  </a>
+  <ul class="nav-links">
+    <li><a href="../index.html">Home</a></li>
+    <li><a href="clickhouse.html" class="active">ClickHouse</a></li>
+    <li><a href="engine.html">Engine</a></li>
+    <li><a href="addin.html">Excel Add-in</a></li>
+  </ul>
+  <div class="nav-right">
+    <a class="nav-github" href="https://github.com/ivanshamaev/clickhouse-olap" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.087.636-1.338-2.22-.252-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.268 2.75 1.026A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.026 2.747-1.026.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- ── Page hero ─────────────────────────────────────────────────────────────── -->
+<div style="background:var(--blue);color:#fff;padding:3rem 0 2.5rem">
+  <div class="container">
+    <div class="section-label" style="color:rgba(255,255,255,.7)">Guide</div>
+    <h1 style="color:#fff;margin-bottom:.5rem">ClickHouse Setup</h1>
+    <p style="color:rgba(255,255,255,.8);font-size:1.05rem;max-width:560px;margin:0">
+      Install ClickHouse on Ubuntu, create the application database and user, define your table schema, and load sample data.
+    </p>
+  </div>
+</div>
+
+<!-- ── Content ───────────────────────────────────────────────────────────────── -->
+<div class="container">
+  <div class="docs-layout">
+
+    <!-- Sidebar TOC -->
+    <aside class="docs-sidebar">
+      <div class="docs-toc">
+        <h4>On this page</h4>
+        <ul>
+          <li><a href="#requirements">Server requirements</a></li>
+          <li><a href="#install">Install ClickHouse</a></li>
+          <li><a href="#user">Create database &amp; user</a></li>
+          <li><a href="#schema">Table schema</a></li>
+          <li><a href="#sample-data">Load sample data</a></li>
+          <li><a href="#verify">Verify</a></li>
+          <li><a href="#security">Security notes</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <article class="docs-content">
+
+      <h2 id="requirements">Server requirements</h2>
+
+      <table>
+        <thead><tr><th>Parameter</th><th>Minimum</th><th>Recommended</th></tr></thead>
+        <tbody>
+          <tr><td>OS</td><td>Ubuntu 22.04 LTS</td><td>Ubuntu 24.04 LTS</td></tr>
+          <tr><td>CPU</td><td>2 vCPU</td><td>4+ vCPU</td></tr>
+          <tr><td>RAM</td><td>4 GB</td><td>8+ GB (ClickHouse is memory-hungry)</td></tr>
+          <tr><td>Disk</td><td>20 GB SSD</td><td>50+ GB SSD</td></tr>
+          <tr><td>Open ports</td><td>80, 443, 22</td><td>same</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        <strong>Note</strong>
+        ClickHouse and the Rust engine can share the same VPS.
+        ClickHouse listens only on <code>127.0.0.1:8123</code> by default —
+        the engine connects locally, nginx handles external HTTPS traffic.
+      </div>
+
+      <h2 id="install">Install ClickHouse</h2>
+
+      <p>Add the official ClickHouse apt repository and install:</p>
+
+<pre><code># Update the system first
+apt update &amp;&amp; apt upgrade -y
+
+# Install prerequisites
+apt install -y apt-transport-https ca-certificates curl gnupg
+
+# Add ClickHouse signing key
+curl -fsSL https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key \
+  | gpg --dearmor -o /usr/share/keyrings/clickhouse-keyring.gpg
+
+# Add repository
+echo "deb [signed-by=/usr/share/keyrings/clickhouse-keyring.gpg] \
+  https://packages.clickhouse.com/deb stable main" \
+  &gt; /etc/apt/sources.list.d/clickhouse.list
+
+# Install
+apt update &amp;&amp; apt install -y clickhouse-server clickhouse-client
+
+# Enable and start
+systemctl enable --now clickhouse-server
+systemctl status clickhouse-server</code></pre>
+
+      <p>Verify ClickHouse is listening on the loopback interface only:</p>
+
+<pre><code>ss -tlnp | grep 8123
+# expected: 127.0.0.1:8123</code></pre>
+
+      <h2 id="user">Create database &amp; user</h2>
+
+      <p>Create an isolated database and a dedicated application user with minimal privileges:</p>
+
+<pre><code>clickhouse-client --query "
+  CREATE DATABASE IF NOT EXISTS olap;
+
+  CREATE USER IF NOT EXISTS olap_user
+    IDENTIFIED BY 'REPLACE_WITH_STRONG_PASSWORD';
+
+  GRANT ALL ON olap.* TO olap_user;
+"</code></pre>
+
+      <div class="warning">
+        <strong>Security</strong>
+        Replace <code>REPLACE_WITH_STRONG_PASSWORD</code> with a randomly generated secret
+        (e.g. <code>openssl rand -base64 32</code>).
+        Never use the default ClickHouse user for the application.
+      </div>
+
+      <h2 id="schema">Table schema</h2>
+
+      <p>
+        The example schema models a sales dataset. Adjust column names and types to match your data.
+        The engine reads table and field names from the <em>semantic model</em> TOML file — the schema
+        here just needs to match.
+      </p>
+
+<pre><code>clickhouse-client --user olap_user --password 'YOUR_PASSWORD' --query "
+CREATE TABLE IF NOT EXISTS olap.sales (
+    order_id         UInt64,
+    customer_id      UInt64,
+    order_date       Date,
+    region           LowCardinality(String),
+    country          LowCardinality(String),
+    product_category LowCardinality(String),
+    amount           Decimal(18, 2),
+    qty              UInt32
+) ENGINE = MergeTree()
+ORDER BY (region, order_date, order_id)
+SETTINGS index_granularity = 8192;
+"</code></pre>
+
+      <h3>Schema design tips</h3>
+      <ul class="checklist">
+        <li>Use <code>LowCardinality(String)</code> for dimension columns with &lt; 10 000 distinct values (region, category, status, …). It compresses 5–10× better and speeds up GROUP BY.</li>
+        <li>Choose the ORDER BY key to match your most common pivot dimensions. ClickHouse uses it as the primary index for range scans.</li>
+        <li>Use <code>Date</code> (not <code>DateTime</code>) for date dimensions when time-of-day precision is not needed — it halves storage and speeds up <code>toStartOfQuarter()</code>-style expressions.</li>
+        <li>Partitioning by month (<code>PARTITION BY toYYYYMM(order_date)</code>) helps DROP old data and speeds date-range queries, but is not required for the engine to function.</li>
+      </ul>
+
+      <h2 id="sample-data">Load sample data</h2>
+
+      <p>Insert a small dataset for initial testing:</p>
+
+<pre><code>clickhouse-client --user olap_user --password 'YOUR_PASSWORD' --query "
+INSERT INTO olap.sales VALUES
+  (1,  101, '2024-01-05', 'Baltic',  'Estonia', 'Electronics',  1200.00, 2),
+  (2,  102, '2024-01-12', 'Baltic',  'Latvia',  'Furniture',     450.00, 1),
+  (3,  103, '2024-01-20', 'Baltic',  'Estonia', 'Electronics',   980.00, 1),
+  (4,  104, '2024-02-03', 'Baltic',  'Latvia',  'Clothing',      220.00, 3),
+  (5,  105, '2024-02-14', 'Nordic',  'Finland', 'Electronics',  2100.00, 3),
+  (6,  106, '2024-02-22', 'Nordic',  'Sweden',  'Furniture',    1750.00, 2),
+  (7,  107, '2024-03-01', 'Baltic',  'Lithuania','Electronics', 1340.00, 2),
+  (8,  108, '2024-03-10', 'Nordic',  'Norway',  'Clothing',      890.00, 5),
+  (9,  109, '2024-03-18', 'Nordic',  'Sweden',  'Electronics',  3200.00, 4),
+  (10, 110, '2024-03-25', 'Baltic',  'Estonia', 'Clothing',      310.00, 2),
+  (11, 111, '2024-04-04', 'Nordic',  'Finland', 'Furniture',    2200.00, 3),
+  (12, 112, '2024-04-15', 'Baltic',  'Latvia',  'Electronics',  1450.00, 2),
+  (13, 113, '2024-04-22', 'Nordic',  'Norway',  'Electronics',  2780.00, 3),
+  (14, 114, '2024-05-03', 'Baltic',  'Lithuania','Furniture',    680.00, 1),
+  (15, 115, '2024-05-11', 'Nordic',  'Sweden',  'Clothing',      540.00, 4)
+"</code></pre>
+
+      <p>For production, load your real data via CSV import:</p>
+
+<pre><code># Import from a CSV file (no headers)
+clickhouse-client --user olap_user --password 'YOUR_PASSWORD' \
+  --query "INSERT INTO olap.sales FORMAT CSV" &lt; data.csv
+
+# Or with headers (CSVWithNames)
+clickhouse-client --user olap_user --password 'YOUR_PASSWORD' \
+  --query "INSERT INTO olap.sales FORMAT CSVWithNames" &lt; data_with_headers.csv</code></pre>
+
+      <h2 id="verify">Verify</h2>
+
+<pre><code># Row count
+clickhouse-client --user olap_user --password 'YOUR_PASSWORD' \
+  --query "SELECT count() FROM olap.sales"
+
+# Quick aggregation test
+clickhouse-client --user olap_user --password 'YOUR_PASSWORD' \
+  --query "
+  SELECT region, sum(amount) AS revenue, uniq(customer_id) AS customers
+  FROM olap.sales
+  GROUP BY region
+  ORDER BY revenue DESC
+  FORMAT PrettyCompact
+"</code></pre>
+
+      <h2 id="security">Security notes</h2>
+
+      <ul class="checklist">
+        <li>ClickHouse must listen only on <code>127.0.0.1:8123</code> — never expose port 8123 to the internet.</li>
+        <li>Use a dedicated user (<code>olap_user</code>) with <code>GRANT ON olap.*</code> only. No system-wide grants.</li>
+        <li>ClickHouse has no TLS on the HTTP interface by default — that's fine because traffic never leaves localhost. External clients go through nginx HTTPS.</li>
+        <li>Rotate the <code>olap_user</code> password periodically and update <code>config.toml</code> on the engine side.</li>
+      </ul>
+
+      <div class="tip">
+        <strong>Next step</strong>
+        With ClickHouse running and data loaded, deploy the Rust engine.
+        <a href="engine.html">Engine Deployment Guide →</a>
+      </div>
+
+    </article>
+  </div>
+</div>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">ClickHouse OLAP</div>
+        <p class="footer-desc">Open-source Excel add-in and Rust engine for sub-second OLAP pivot tables backed by ClickHouse. MIT License.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Docs</h4>
+        <ul>
+          <li><a href="clickhouse.html">ClickHouse Setup</a></li>
+          <li><a href="engine.html">Engine Deployment</a></li>
+          <li><a href="addin.html">Excel Add-in</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Links</h4>
+        <ul>
+          <li><a href="https://github.com/ivanshamaev/clickhouse-olap" target="_blank" rel="noopener">GitHub Repository</a></li>
+          <li><a href="https://ivan-shamaev.ru/cv" target="_blank" rel="noopener">Author CV</a></li>
+          <li><a href="https://clickhouse.com/docs" target="_blank" rel="noopener">ClickHouse Docs</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 Ivan Shamaev. MIT License.</span>
+      <span>Made with 🦀 Rust + Office.js</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

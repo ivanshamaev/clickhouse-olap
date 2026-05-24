@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Excel Add-in Setup — ClickHouse OLAP Docs</title>
+  <link rel="stylesheet" href="../site.css" />
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────────────────────────────────────── -->
+<nav class="site-nav">
+  <a class="nav-brand" href="../index.html">
+    <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v4h6V5H5zm8 0v4h6V5h-6zM5 11v4h6v-4H5zm8 0v4h6v-4h-6zM5 17v2h6v-2H5zm8 0v2h6v-2h-6z"/></svg>
+    ClickHouse OLAP
+  </a>
+  <ul class="nav-links">
+    <li><a href="../index.html">Home</a></li>
+    <li><a href="clickhouse.html">ClickHouse</a></li>
+    <li><a href="engine.html">Engine</a></li>
+    <li><a href="addin.html" class="active">Excel Add-in</a></li>
+  </ul>
+  <div class="nav-right">
+    <a class="nav-github" href="https://github.com/ivanshamaev/clickhouse-olap" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.087.636-1.338-2.22-.252-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.268 2.75 1.026A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.026 2.747-1.026.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- ── Page hero ─────────────────────────────────────────────────────────────── -->
+<div style="background:var(--blue);color:#fff;padding:3rem 0 2.5rem">
+  <div class="container">
+    <div class="section-label" style="color:rgba(255,255,255,.7)">Guide</div>
+    <h1 style="color:#fff;margin-bottom:.5rem">Excel Add-in Setup</h1>
+    <p style="color:rgba(255,255,255,.8);font-size:1.05rem;max-width:560px;margin:0">
+      Download <code style="background:rgba(255,255,255,.15);color:#fff">manifest.xml</code>,
+      sideload the add-in into Excel on Windows or Mac, and connect it to your deployed engine.
+    </p>
+  </div>
+</div>
+
+<!-- ── Content ───────────────────────────────────────────────────────────────── -->
+<div class="container">
+  <div class="docs-layout">
+
+    <!-- Sidebar TOC -->
+    <aside class="docs-sidebar">
+      <div class="docs-toc">
+        <h4>On this page</h4>
+        <ul>
+          <li><a href="#prerequisites">Prerequisites</a></li>
+          <li><a href="#download">Download manifest.xml</a></li>
+          <li><a href="#windows">Install on Windows</a></li>
+          <li><a href="#mac">Install on macOS</a></li>
+          <li><a href="#connect">Connect to engine</a></li>
+          <li><a href="#first-pivot">Build first pivot</a></li>
+          <li><a href="#troubleshooting">Troubleshooting</a></li>
+          <li><a href="#update">Update add-in</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <article class="docs-content">
+
+      <h2 id="prerequisites">Prerequisites</h2>
+
+      <ul class="checklist">
+        <li>Microsoft Excel desktop — Windows 2016 or later, macOS 2019 or later (Excel on the web also works)</li>
+        <li>The Rust engine is deployed and accessible via HTTPS (e.g. <code>https://engine.yourdomain.com</code>)</li>
+        <li>A stable internet connection to download <code>manifest.xml</code></li>
+      </ul>
+
+      <div class="note">
+        <strong>HTTPS is required</strong>
+        Office.js add-ins must be served over HTTPS — even for localhost connections.
+        If your engine is not yet behind HTTPS, follow the <a href="engine.html#nginx">nginx + HTTPS section</a> first.
+      </div>
+
+      <h2 id="download">Download manifest.xml</h2>
+
+      <p>
+        Download the add-in manifest from the latest GitHub release.
+        The manifest tells Excel where to load the add-in UI from (GitHub Pages) and
+        which ribbon buttons to add.
+      </p>
+
+      <p style="text-align:center;margin:1.5rem 0">
+        <a class="btn btn-accent"
+           href="https://github.com/ivanshamaev/clickhouse-olap/releases/latest/download/manifest.xml"
+           style="font-size:1rem;padding:.8rem 2rem">
+          ⬇ Download manifest.xml
+        </a>
+      </p>
+
+      <p>Or download from the command line:</p>
+
+<pre><code>curl -L -o manifest.xml \
+  https://github.com/ivanshamaev/clickhouse-olap/releases/latest/download/manifest.xml</code></pre>
+
+      <h2 id="windows">Install on Windows</h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Open Excel</h3>
+            <p>Open any workbook in Microsoft Excel for Windows (or create a new blank workbook).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Navigate to Add-ins</h3>
+            <p>Click <strong>Insert</strong> tab → <strong>Add-ins</strong> → <strong>My Add-ins</strong>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Upload the manifest</h3>
+            <p>In the My Add-ins dialog, click <strong>Upload My Add-in</strong> (bottom-left link). Browse to the downloaded <code>manifest.xml</code> file and click <strong>Upload</strong>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h3>Open the add-in</h3>
+            <p>A <strong>ClickHouse OLAP</strong> button appears on the <strong>Home</strong> tab. Click it to open the task pane.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tip">
+        <strong>Tip — network shares for teams</strong>
+        For organisations with multiple Excel users, put <code>manifest.xml</code> on a shared
+        network folder and have each user point the Trusted Add-in Catalog to that share.
+        Updates then propagate automatically.
+      </div>
+
+      <h2 id="mac">Install on macOS</h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Locate the WEF folder</h3>
+            <p>Create (if missing) the folder:</p>
+            <pre><code>~/Library/Containers/com.microsoft.Excel/Data/Documents/wef/</code></pre>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Copy manifest.xml</h3>
+            <p>Copy the downloaded <code>manifest.xml</code> into the <code>wef/</code> folder.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Restart Excel and open the add-in</h3>
+            <p>Restart Excel. Go to <strong>Insert</strong> → <strong>Add-ins</strong> → <strong>My Add-ins</strong>. The <strong>ClickHouse OLAP</strong> add-in will appear in the <em>Developer Add-ins</em> section.</p>
+          </div>
+        </div>
+      </div>
+
+      <h2 id="connect">Connect to engine</h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Open Settings</h3>
+            <p>In the add-in task pane click the ⚙ <strong>Settings</strong> icon (top-right).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Enter Engine URL</h3>
+            <p>In the <strong>Engine URL</strong> field type your engine's base URL, e.g.:</p>
+            <pre><code>https://engine.yourdomain.com</code></pre>
+            <p>No trailing slash, no <code>/v1</code> path — the add-in appends that automatically.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Test Connection</h3>
+            <p>Click <strong>Test Connection</strong>. A green <badge class="badge badge-green">✓ Connected</badge>
+            message confirms the engine is reachable and the API version is compatible.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h3>Save settings</h3>
+            <p>Click <strong>Save</strong>. The URL is persisted in the workbook so you don't need to re-enter it.</p>
+          </div>
+        </div>
+      </div>
+
+      <h2 id="first-pivot">Build your first pivot table</h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Select a model</h3>
+            <p>The add-in lists all semantic models available on the engine. Select the model that contains your data (e.g. <strong>Sales</strong>).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Drag dimensions and measures</h3>
+            <p>Drag available fields into the <strong>Rows</strong>, <strong>Columns</strong>, and <strong>Measures</strong> areas. For date fields, select the granularity (Year / Quarter / Month / Day).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Apply filters (optional)</h3>
+            <p>Click <strong>+ Filter</strong> to restrict the data by region, date range, or any other dimension.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h3>Click Run</h3>
+            <p>Click <strong>▶ Run</strong>. The pivot result is written directly into the selected cell range in your workbook. Subtotals and grand totals are included if toggled on.</p>
+          </div>
+        </div>
+      </div>
+
+      <h2 id="troubleshooting">Troubleshooting</h2>
+
+      <table>
+        <thead><tr><th>Symptom</th><th>Cause &amp; fix</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Add-in task pane shows blank white page</td>
+            <td>The add-in assets could not be loaded. Check that GitHub Pages is reachable (<a href="https://ivanshamaev.github.io/clickhouse-olap/" target="_blank" rel="noopener">ivanshamaev.github.io/clickhouse-olap</a>) and your Excel has internet access.</td>
+          </tr>
+          <tr>
+            <td>"Connection failed" on Test Connection</td>
+            <td>Engine URL is wrong, the engine is down, or HTTPS certificate is invalid. Run <code>curl https://engine.yourdomain.com/v1/health</code> from a terminal to diagnose.</td>
+          </tr>
+          <tr>
+            <td>"CORS error" in browser dev tools</td>
+            <td>nginx CORS headers don't include the add-in origin. Update the <code>Access-Control-Allow-Origin</code> header in nginx to match the GitHub Pages URL.</td>
+          </tr>
+          <tr>
+            <td>"MODEL_NOT_FOUND"</td>
+            <td>The selected model does not exist on the engine. Check <code>/etc/clickhouse-olap/models/</code> and restart the engine service.</td>
+          </tr>
+          <tr>
+            <td>"PREAGGREGATE_TOO_LARGE"</td>
+            <td>The pivot dimensions would produce too many groups. Add a filter, reduce dimensions, or increase <code>max_groups</code> in <code>config.toml</code>.</td>
+          </tr>
+          <tr>
+            <td>Old version of add-in loads</td>
+            <td>Clear the Office add-in cache. In Excel: <strong>File → Options → Trust Center → Trust Center Settings → Trusted Add-in Catalogs → Clear cache</strong>, then restart Excel.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="update">Update the add-in</h2>
+
+      <p>
+        The add-in UI is hosted on GitHub Pages and updates automatically when a new version is deployed —
+        no action needed on your side for UI changes.
+      </p>
+      <p>
+        If a new <strong>manifest.xml</strong> is released (which happens only on breaking API changes),
+        re-download and re-sideload it using the same steps as the initial installation.
+        Watch the <a href="https://github.com/ivanshamaev/clickhouse-olap/releases" target="_blank" rel="noopener">GitHub Releases page</a>
+        to know when a manifest update is required.
+      </p>
+
+      <div class="tip">
+        <strong>All set!</strong>
+        You now have a fully functional ClickHouse OLAP pivot table add-in in Excel.
+        If you have questions or find a bug, open an issue on <a href="https://github.com/ivanshamaev/clickhouse-olap/issues" target="_blank" rel="noopener">GitHub</a>.
+      </div>
+
+    </article>
+  </div>
+</div>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">ClickHouse OLAP</div>
+        <p class="footer-desc">Open-source Excel add-in and Rust engine for sub-second OLAP pivot tables backed by ClickHouse. MIT License.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Docs</h4>
+        <ul>
+          <li><a href="clickhouse.html">ClickHouse Setup</a></li>
+          <li><a href="engine.html">Engine Deployment</a></li>
+          <li><a href="addin.html">Excel Add-in</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Links</h4>
+        <ul>
+          <li><a href="https://github.com/ivanshamaev/clickhouse-olap" target="_blank" rel="noopener">GitHub Repository</a></li>
+          <li><a href="https://github.com/ivanshamaev/clickhouse-olap/releases" target="_blank" rel="noopener">Releases</a></li>
+          <li><a href="https://ivan-shamaev.ru/cv" target="_blank" rel="noopener">Author CV</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 Ivan Shamaev. MIT License.</span>
+      <span>Made with 🦀 Rust + Office.js</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
